@@ -1,6 +1,13 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 type Mood = 'calm' | 'loud' | 'warm' | 'lonely' | 'bright'
+
+interface ImageData {
+  url: string
+  alt: string
+  author: string
+  link: string
+}
 
 const MOODS: { key: Mood; label: string; emoji: string }[] = [
   { key: 'calm', label: 'Calm', emoji: '🌊' },
@@ -12,14 +19,21 @@ const MOODS: { key: Mood; label: string; emoji: string }[] = [
 
 function App() {
   const [activeMood, setActiveMood] = useState<Mood | null>(null)
-  const [images, setImages] = useState<string[]>([])
+  const [images, setImages] = useState<ImageData[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fetchingRef = useRef<Mood | null>(null)
   const reqIdRef = useRef(0)
+  const abortRef = useRef<AbortController | null>(null)
+  const firstImageRef = useRef<HTMLImageElement>(null)
 
   async function fetchImages(mood: Mood) {
     if (fetchingRef.current === mood) return
+
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     fetchingRef.current = mood
     setActiveMood(mood)
     setLoading(true)
@@ -27,21 +41,22 @@ function App() {
     setImages([])
 
     const id = ++reqIdRef.current
-    const salt = Date.now()
 
     try {
-      const results = await Promise.all(
-        Array.from({ length: 5 }, (_, i) =>
-          fetch(`https://picsum.photos/seed/${mood}${salt}${i + 1}/800/600`)
-            .then((res) => {
-              if (!res.ok) throw new Error(`Request failed (${res.status})`)
-              return res.url
-            }),
-        ),
-      )
+      const res = await fetch(`/api/unsplash?mood=${mood}`, {
+        signal: controller.signal,
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || `Request failed (${res.status})`)
+      }
+
+      const data: ImageData[] = await res.json()
       if (id !== reqIdRef.current) return
-      setImages(results)
+      setImages(data)
     } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return
       if (id !== reqIdRef.current) return
       setError(e instanceof Error ? e.message : 'Something went wrong')
     } finally {
@@ -52,13 +67,19 @@ function App() {
     }
   }
 
+  useEffect(() => {
+    if (images.length > 0 && firstImageRef.current) {
+      firstImageRef.current.focus()
+    }
+  }, [images])
+
   return (
     <div className="app">
       <header className="header">
         <h1 className="title">The Vibe Atlas</h1>
         <p className="subtitle">A mood board from the open web</p>
         <p className="tagline">
-          Pick a mood. We'll pull five images from the web to match it.
+          Pick a mood. We'll pull five images from Unsplash to match it.
         </p>
       </header>
 
@@ -77,15 +98,16 @@ function App() {
             onClick={() => fetchImages(key)}
             disabled={loading && activeMood !== key}
           >
-            <span className="mood-dot" style={{ background: `var(--${key})` }} />
-            {emoji} {label}
+            <span aria-hidden="true" className="mood-dot" style={{ background: `var(--${key})` }} />
+            <span aria-hidden="true">{emoji}</span>
+            {label}
           </button>
         ))}
       </div>
 
       <div className="content">
         {error && (
-          <div className="error-state">
+          <div className="error-state" role="alert">
             <div className="error-icon">!</div>
             <p className="error-text">{error}</p>
             <button className="retry-btn" onClick={() => activeMood && fetchImages(activeMood)}>
@@ -95,7 +117,7 @@ function App() {
         )}
 
         {loading && (
-          <div className="grid">
+          <div className="grid" role="status" aria-label="Loading mood images">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="skeleton" />
             ))}
@@ -104,13 +126,23 @@ function App() {
 
         {!loading && !error && images.length > 0 && (
           <div className="grid">
-            {images.map((url, i) => (
-              <div key={i} className="card">
+            {images.map((img, i) => (
+              <div key={`${img.url}-${i}`} className="card">
                 <img
-                  src={url}
-                  alt={`${activeMood} mood image ${i + 1}`}
+                  ref={i === 0 ? firstImageRef : undefined}
+                  src={img.url}
+                  alt={img.alt}
+                  tabIndex={-1}
                   loading="lazy"
                 />
+                <a
+                  href={img.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="credit"
+                >
+                  {img.author}
+                </a>
               </div>
             ))}
           </div>
@@ -123,6 +155,17 @@ function App() {
           </div>
         )}
       </div>
+
+      <footer className="footer">
+        <a
+          href="https://unsplash.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="unsplash-attribution"
+        >
+          Photos from Unsplash
+        </a>
+      </footer>
     </div>
   )
 }

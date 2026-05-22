@@ -300,6 +300,45 @@ body {
   opacity: 0.3;
 }
 
+.credit {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  color: #fff;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.card:hover .credit {
+  opacity: 1;
+}
+
+.card:focus-within .credit {
+  opacity: 1;
+}
+
+.footer {
+  width: 100%;
+  text-align: center;
+  padding-top: 8px;
+}
+
+.unsplash-attribution {
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.unsplash-attribution:hover {
+  color: var(--text);
+}
+
 @media (max-width: 768px) {
   #root {
     padding: 32px 16px 60px;
