@@ -27,11 +27,12 @@ function App() {
     setImages([])
 
     const id = ++reqIdRef.current
+    const salt = Date.now()
 
     try {
       const results = await Promise.all(
         Array.from({ length: 5 }, (_, i) =>
-          fetch(`https://picsum.photos/seed/${mood}${i + 1}/800/600`)
+          fetch(`https://picsum.photos/seed/${mood}${salt}${i + 1}/800/600`)
             .then((res) => {
               if (!res.ok) throw new Error(`Request failed (${res.status})`)
               return res.url
@@ -74,7 +75,7 @@ function App() {
               } as React.CSSProperties
             }
             onClick={() => fetchImages(key)}
-            disabled={loading}
+            disabled={loading && activeMood !== key}
           >
             <span className="mood-dot" style={{ background: `var(--${key})` }} />
             {emoji} {label}
