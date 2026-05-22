@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 type Mood = 'calm' | 'loud' | 'warm' | 'lonely' | 'bright'
 
@@ -7,6 +7,28 @@ interface ImageData {
   alt: string
   author: string
   link: string
+}
+
+interface SavedBoard {
+  id: string
+  mood: string
+  images: ImageData[]
+  savedAt: number
+}
+
+const STORAGE_KEY = 'vibe-atlas-boards'
+
+function loadBoards(): SavedBoard[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function saveBoards(boards: SavedBoard[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(boards))
 }
 
 const MOODS: { key: Mood; label: string; emoji: string }[] = [
@@ -23,10 +45,41 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [customInput, setCustomInput] = useState('')
+  const [savedBoards, setSavedBoards] = useState<SavedBoard[]>([])
   const fetchingRef = useRef<string | null>(null)
   const reqIdRef = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
   const firstImageRef = useRef<HTMLImageElement>(null)
+
+  useEffect(() => {
+    setSavedBoards(loadBoards())
+  }, [])
+
+  const saveBoard = useCallback(() => {
+    if (images.length === 0 || !activeMood) return
+    const board: SavedBoard = {
+      id: `${activeMood}-${Date.now()}`,
+      mood: activeMood,
+      images,
+      savedAt: Date.now(),
+    }
+    const updated = [board, ...savedBoards].slice(0, 20)
+    setSavedBoards(updated)
+    saveBoards(updated)
+  }, [images, activeMood, savedBoards])
+
+  const restoreBoard = useCallback((board: SavedBoard) => {
+    setImages(board.images)
+    setActiveMood(board.mood)
+    setError(null)
+    setLoading(false)
+  }, [])
+
+  const deleteBoard = useCallback((id: string) => {
+    const updated = savedBoards.filter((b) => b.id !== id)
+    setSavedBoards(updated)
+    saveBoards(updated)
+  }, [savedBoards])
 
   async function fetchImages(mood: string) {
     if (fetchingRef.current === mood) return
@@ -181,6 +234,35 @@ function App() {
           </div>
         )}
       </div>
+
+      {!loading && !error && images.length > 0 && (
+        <button className="save-btn" onClick={saveBoard}>
+          Save this board
+        </button>
+      )}
+
+      {savedBoards.length > 0 && (
+        <div className="saved-section">
+          <h2 className="saved-title">Saved boards</h2>
+          <div className="saved-grid">
+            {savedBoards.map((board) => (
+              <div key={board.id} className="saved-card">
+                <div className="saved-preview" onClick={() => restoreBoard(board)}>
+                  <img src={board.images[0].url} alt="" />
+                  <span className="saved-mood">{board.mood}</span>
+                </div>
+                <button
+                  className="saved-delete"
+                  onClick={() => deleteBoard(board.id)}
+                  aria-label={`Delete ${board.mood} board`}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <footer className="footer">
         <a
