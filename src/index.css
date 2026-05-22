@@ -159,6 +159,62 @@ body {
   vertical-align: middle;
 }
 
+.custom-mood {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 22rem;
+}
+
+.custom-input {
+  flex: 1;
+  font-family: var(--font);
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.custom-input::placeholder {
+  color: var(--text-subtle);
+}
+
+.custom-input:focus {
+  border-color: var(--text-muted);
+}
+
+.custom-input:disabled {
+  opacity: 0.5;
+}
+
+.custom-go {
+  font-family: var(--font);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.custom-go:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--text-muted);
+}
+
+.custom-go:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .content {
   width: 100%;
   display: flex;

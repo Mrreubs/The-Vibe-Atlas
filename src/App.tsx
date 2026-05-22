@@ -18,16 +18,17 @@ const MOODS: { key: Mood; label: string; emoji: string }[] = [
 ]
 
 function App() {
-  const [activeMood, setActiveMood] = useState<Mood | null>(null)
+  const [activeMood, setActiveMood] = useState<string | null>(null)
   const [images, setImages] = useState<ImageData[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const fetchingRef = useRef<Mood | null>(null)
+  const [customInput, setCustomInput] = useState('')
+  const fetchingRef = useRef<string | null>(null)
   const reqIdRef = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
   const firstImageRef = useRef<HTMLImageElement>(null)
 
-  async function fetchImages(mood: Mood) {
+  async function fetchImages(mood: string) {
     if (fetchingRef.current === mood) return
 
     abortRef.current?.abort()
@@ -43,7 +44,7 @@ function App() {
     const id = ++reqIdRef.current
 
     try {
-      const res = await fetch(`/api/unsplash?mood=${mood}`, {
+      const res = await fetch(`/api/unsplash?mood=${encodeURIComponent(mood)}`, {
         signal: controller.signal,
       })
 
@@ -67,6 +68,13 @@ function App() {
     }
   }
 
+  function handleCustomSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const trimmed = customInput.trim()
+    if (!trimmed) return
+    fetchImages(trimmed)
+  }
+
   useEffect(() => {
     if (images.length > 0 && firstImageRef.current) {
       firstImageRef.current.focus()
@@ -79,7 +87,7 @@ function App() {
         <h1 className="title">The Vibe Atlas</h1>
         <p className="subtitle">A mood board from the open web</p>
         <p className="tagline">
-          Pick a mood. We'll pull five images from Unsplash to match it.
+          Pick a mood or type your own. We'll pull five images from Unsplash to match it.
         </p>
       </header>
 
@@ -104,6 +112,24 @@ function App() {
           </button>
         ))}
       </div>
+
+      <form className="custom-mood" onSubmit={handleCustomSubmit}>
+        <input
+          className="custom-input"
+          type="text"
+          placeholder="Or type any mood…"
+          value={customInput}
+          onChange={(e) => setCustomInput(e.target.value)}
+          disabled={loading}
+        />
+        <button
+          className="custom-go"
+          type="submit"
+          disabled={loading || !customInput.trim()}
+        >
+          Go
+        </button>
+      </form>
 
       <div className="content">
         {error && (
@@ -151,7 +177,7 @@ function App() {
         {!loading && !error && images.length === 0 && (
           <div className="empty-state">
             <div className="empty-icon">✦</div>
-            <p>Choose a mood above to curate your board</p>
+            <p>Choose a mood above or type one in</p>
           </div>
         )}
       </div>
